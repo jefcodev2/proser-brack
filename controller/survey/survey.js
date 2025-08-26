@@ -11,6 +11,7 @@ const getSurveyTelefonica = async (req, res) => {
     const desde = Number(req.query.desde) || 0;
     const limit = Number(req.query.limit) || 10;
     const provincia = req.query.provincia || null;
+    const tipo_encuesta = req.query.tipo_encuesta || null;
 
     // Construir la consulta base
     let querySurvey = `SELECT * FROM survey_telefonica`;
@@ -18,23 +19,37 @@ const getSurveyTelefonica = async (req, res) => {
     let params = [];
     let paramCount = 0;
 
-    // Agregar filtro por provincia si se proporciona
+    // Agregar filtros si se proporcionan
+    let whereConditions = [];
+    let whereParams = [];
+    
     if (provincia) {
-      paramCount++;
-      querySurvey += ` WHERE provincia ILIKE $${paramCount}`;
-      querySurveyCount += ` WHERE provincia ILIKE $${paramCount}`;
-      params.push(`%${provincia}%`);
+      whereConditions.push(`provincia ILIKE $${whereParams.length + 1}`);
+      whereParams.push(`%${provincia}%`);
+    }
+    
+    if (tipo_encuesta) {
+      whereConditions.push(`tipo_encuesta ILIKE $${whereParams.length + 1}`);
+      whereParams.push(`%${tipo_encuesta}%`);
+    }
+    
+    // Construir cláusula WHERE si hay filtros
+    if (whereConditions.length > 0) {
+      const whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
+      querySurvey += whereClause;
+      querySurveyCount += whereClause;
+      params = [...whereParams];
     }
 
     // Agregar paginación
-    paramCount++;
-    querySurvey += ` OFFSET $${paramCount} LIMIT $${paramCount + 1}`;
+    paramCount = whereParams.length;
+    querySurvey += ` OFFSET $${paramCount + 1} LIMIT $${paramCount + 2}`;
     params.push(desde, limit);
 
     // Promesas para obtener datos y total
     const [encuestas, total] = await Promise.all([
       db_postgres.query(querySurvey, params),
-      db_postgres.one(querySurveyCount, provincia ? [provincia] : []),
+      db_postgres.one(querySurveyCount, whereParams),
     ]);
 
     const totalCount = total.count;
@@ -46,7 +61,8 @@ const getSurveyTelefonica = async (req, res) => {
       desde,
       limit,
       filtros: {
-        provincia: provincia || 'Todas'
+        provincia: provincia || 'Todas',
+        tipo_encuesta: tipo_encuesta || 'Todos'
       }
     });
   } catch (error) {
@@ -218,10 +234,42 @@ const getProvincias = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene la lista de tipos de encuesta disponibles
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getTiposEncuesta = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT tipo_encuesta 
+      FROM survey_telefonica 
+      WHERE tipo_encuesta IS NOT NULL AND tipo_encuesta != ''
+      ORDER BY tipo_encuesta ASC
+    `;
+
+    const tiposEncuesta = await db_postgres.query(query);
+
+    res.json({
+      ok: true,
+      tipos_encuesta: tiposEncuesta.map(t => t.tipo_encuesta),
+      total: tiposEncuesta.length
+    });
+  } catch (error) {
+    console.error('Error en getTiposEncuesta:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener los tipos de encuesta",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSurveyTelefonica,
   getSurveyTelefonicaById,
   uploadSurveyTelefonica,
-  getProvincias
+  getProvincias,
+  getTiposEncuesta
 };
 
