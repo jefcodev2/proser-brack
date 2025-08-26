@@ -12,6 +12,7 @@ const getSurveyTelefonica = async (req, res) => {
     const limit = Number(req.query.limit) || 10;
     const provincia = req.query.provincia || null;
     const tipo_encuesta = req.query.tipo_encuesta || null;
+    const tamano_local = req.query.tamano_local || null;
 
     // Construir la consulta base
     let querySurvey = `SELECT * FROM survey_telefonica`;
@@ -31,6 +32,11 @@ const getSurveyTelefonica = async (req, res) => {
     if (tipo_encuesta) {
       whereConditions.push(`tipo_encuesta ILIKE $${whereParams.length + 1}`);
       whereParams.push(`%${tipo_encuesta}%`);
+    }
+    
+    if (tamano_local) {
+      whereConditions.push(`tamano_local ILIKE $${whereParams.length + 1}`);
+      whereParams.push(`%${tamano_local}%`);
     }
     
     // Construir cláusula WHERE si hay filtros
@@ -62,7 +68,8 @@ const getSurveyTelefonica = async (req, res) => {
       limit,
       filtros: {
         provincia: provincia || 'Todas',
-        tipo_encuesta: tipo_encuesta || 'Todos'
+        tipo_encuesta: tipo_encuesta || 'Todos',
+        tamano_local: tamano_local || 'Todos'
       }
     });
   } catch (error) {
@@ -265,11 +272,43 @@ const getTiposEncuesta = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene la lista de tamaños de local disponibles
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getTamanosLocal = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT tamano_local 
+      FROM survey_telefonica 
+      WHERE tamano_local IS NOT NULL AND tamano_local != ''
+      ORDER BY tamano_local ASC
+    `;
+
+    const tamanosLocal = await db_postgres.query(query);
+
+    res.json({
+      ok: true,
+      tamanos_local: tamanosLocal.map(t => t.tamano_local),
+      total: tamanosLocal.length
+    });
+  } catch (error) {
+    console.error('Error en getTamanosLocal:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener los tamaños de local",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getSurveyTelefonica,
   getSurveyTelefonicaById,
   uploadSurveyTelefonica,
   getProvincias,
-  getTiposEncuesta
+  getTiposEncuesta,
+  getTamanosLocal
 };
 
