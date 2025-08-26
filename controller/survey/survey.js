@@ -10,15 +10,31 @@ const getSurveyTelefonica = async (req, res) => {
   try {
     const desde = Number(req.query.desde) || 0;
     const limit = Number(req.query.limit) || 10;
+    const provincia = req.query.provincia || null;
 
-    // Consultas
-    const querySurvey = `SELECT * FROM survey_telefonica OFFSET $1 LIMIT $2;`;
-    const querySurveyCount = `SELECT COUNT(*) FROM survey_telefonica;`;
+    // Construir la consulta base
+    let querySurvey = `SELECT * FROM survey_telefonica`;
+    let querySurveyCount = `SELECT COUNT(*) FROM survey_telefonica`;
+    let params = [];
+    let paramCount = 0;
+
+    // Agregar filtro por provincia si se proporciona
+    if (provincia) {
+      paramCount++;
+      querySurvey += ` WHERE provincia ILIKE $${paramCount}`;
+      querySurveyCount += ` WHERE provincia ILIKE $${paramCount}`;
+      params.push(`%${provincia}%`);
+    }
+
+    // Agregar paginación
+    paramCount++;
+    querySurvey += ` OFFSET $${paramCount} LIMIT $${paramCount + 1}`;
+    params.push(desde, limit);
 
     // Promesas para obtener datos y total
     const [encuestas, total] = await Promise.all([
-      db_postgres.query(querySurvey, [desde, limit]),
-      db_postgres.one(querySurveyCount),
+      db_postgres.query(querySurvey, params),
+      db_postgres.one(querySurveyCount, provincia ? [provincia] : []),
     ]);
 
     const totalCount = total.count;
@@ -28,7 +44,10 @@ const getSurveyTelefonica = async (req, res) => {
       encuestas,
       total: totalCount,
       desde,
-      limit
+      limit,
+      filtros: {
+        provincia: provincia || 'Todas'
+      }
     });
   } catch (error) {
     console.error('Error en getSurveyTelefonica:', error);
@@ -40,11 +59,12 @@ const getSurveyTelefonica = async (req, res) => {
   }
 };
 
-/**
- * Obtiene una encuesta telefónica específica por ID
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
+
+
+
+
+
+
 const getSurveyTelefonicaById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -167,9 +187,41 @@ const uploadSurveyTelefonica = async (req, res) => {
   }
 };
 
+/**
+ * Obtiene la lista de provincias disponibles en las encuestas
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getProvincias = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT province 
+      FROM survey_telefonica 
+      WHERE province IS NOT NULL AND province != ''
+      ORDER BY province ASC
+    `;
+
+    const provincias = await db_postgres.query(query);
+
+    res.json({
+      ok: true,
+      provincias: provincias.map(p => p.province),
+      total: provincias.length
+    });
+  } catch (error) {
+    console.error('Error en getProvincias:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener las provincias",
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
   getSurveyTelefonica,
   getSurveyTelefonicaById,
-  uploadSurveyTelefonica
+  uploadSurveyTelefonica,
+  getProvincias
 };
+

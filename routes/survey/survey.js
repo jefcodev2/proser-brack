@@ -7,7 +7,7 @@ const { validarPermisos } = require('../../middlewares/validar-permisos');
 
 const { 
   getSurveyTelefonica, 
-  getSurveyTelefonicaById 
+  getSurveyTelefonicaById,
 } = require('../../controller/survey/survey');
 
 const router = Router();
