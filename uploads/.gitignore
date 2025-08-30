@@ -1,0 +1,3 @@
+# Ignorar todos los archivos en la carpeta uploads
+*
+!.gitignore
