@@ -582,22 +582,40 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
 
           resultados.respondentes_insertados++;
 
+          // Función para limpiar y procesar valores numéricos
+          const limpiarValorNumerico = (valor) => {
+            if (valor === undefined || valor === null || valor === '') return null;
+            
+            // Convertir a string y limpiar caracteres especiales
+            let valorLimpio = String(valor)
+              .replace(/["'\t\n\r]/g, '') 
+              .trim(); 
+            
+            if (valorLimpio === '') return null;
+            
+            if (!isNaN(valorLimpio) && !isNaN(parseFloat(valorLimpio))) {
+              return parseFloat(valorLimpio);
+            }
+            
+            return valorLimpio;
+          };
+
           // Preparar respuestas basadas en las columnas del Excel
           const respuestas = [
             { display_order: 1, respuesta: fila.vende_chips || fila.VENDE_CHIPS },
             { display_order: 2, respuesta: fila.de_que_operadora_vende_chips || fila.DE_QUE_OPERADORA_VENDE_CHIPS },
-            { display_order: 3, respuesta: fila.valor_compra_simcard_movistar || fila.VALOR_COMPRA_SIMCARD_MOVISTAR },
-            { display_order: 4, respuesta: fila.valor_venta_simcard_movistar || fila.VALOR_VENTA_SIMCARD_MOVISTAR },
-            { display_order: 5, respuesta: fila.valor_compra_simcard_tuenti || fila.VALOR_COMPRA_SIMCARD_TUENTI },
-            { display_order: 6, respuesta: fila.valor_venta_simcard_tuenti || fila.VALOR_VENTA_SIMCARD_TUENTI },
-            { display_order: 7, respuesta: fila.valor_compra_simcard_claro || fila.VALOR_COMPRA_SIMCARD_CLARO },
-            { display_order: 8, respuesta: fila.valor_venta_simcard_claro || fila.VALOR_VENTA_SIMCARD_CLARO },
-            { display_order: 9, respuesta: fila.valor_compra_simcard_cnt || fila.VALOR_COMPRA_SIMCARD_CNT },
-            { display_order: 10, respuesta: fila.valor_venta_simcard_cnt || fila.VALOR_VENTA_SIMCARD_CNT },
-            { display_order: 11, respuesta: fila.proporcion_chips_movistar || fila.PROPORCION_CHIPS_MOVISTAR },
-            { display_order: 12, respuesta: fila.proporcion_chips_tuenti || fila.PROPORCION_CHIPS_TUENTI },
-            { display_order: 13, respuesta: fila.stock_actual_movistar || fila.STOCK_ACTUAL_MOVISTAR },
-            { display_order: 14, respuesta: fila.stock_actual_tuenti || fila.STOCK_ACTUAL_TUENTI },
+            { display_order: 3, respuesta: limpiarValorNumerico(fila.valor_compra_simcard_movistar || fila.VALOR_COMPRA_SIMCARD_MOVISTAR) },
+            { display_order: 4, respuesta: limpiarValorNumerico(fila.valor_venta_simcard_movistar || fila.VALOR_VENTA_SIMCARD_MOVISTAR) },
+            { display_order: 5, respuesta: limpiarValorNumerico(fila.valor_compra_simcard_tuenti || fila.VALOR_COMPRA_SIMCARD_TUENTI) },
+            { display_order: 6, respuesta: limpiarValorNumerico(fila.valor_venta_simcard_tuenti || fila.VALOR_VENTA_SIMCARD_TUENTI) },
+            { display_order: 7, respuesta: limpiarValorNumerico(fila.valor_compra_simcard_claro || fila.VALOR_COMPRA_SIMCARD_CLARO) },
+            { display_order: 8, respuesta: limpiarValorNumerico(fila.valor_venta_simcard_claro || fila.VALOR_VENTA_SIMCARD_CLARO) },
+            { display_order: 9, respuesta: limpiarValorNumerico(fila.valor_compra_simcard_cnt || fila.VALOR_COMPRA_SIMCARD_CNT) },
+            { display_order: 10, respuesta: limpiarValorNumerico(fila.valor_venta_simcard_cnt || fila.VALOR_VENTA_SIMCARD_CNT) },
+            { display_order: 11, respuesta: limpiarValorNumerico(fila.proporcion_chips_movistar || fila.PROPORCION_CHIPS_MOVISTAR) },
+            { display_order: 12, respuesta: limpiarValorNumerico(fila.proporcion_chips_tuenti || fila.PROPORCION_CHIPS_TUENTI) },
+            { display_order: 13, respuesta: limpiarValorNumerico(fila.stock_actual_movistar || fila.STOCK_ACTUAL_MOVISTAR) },
+            { display_order: 14, respuesta: limpiarValorNumerico(fila.stock_actual_tuenti || fila.STOCK_ACTUAL_TUENTI) },
             { display_order: 15, respuesta: fila.vende_recargas || fila.VENDE_RECARGAS },
             { display_order: 16, respuesta: fila.de_que_operadora_vende_recargas || fila.DE_QUE_OPERADORA_VENDE_RECARGAS },
             { display_order: 17, respuesta: fila.elementos_actualmente_en_tienda || fila.ELEMENTOS_ACTUALMENTE_EN_TIENDA },
