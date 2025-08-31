@@ -13,7 +13,9 @@ const {
   getTiposEncuesta,
   getTamanosLocal,
   getTiposNegocio,
-  getElementosColocadosEnVisita
+  getElementosColocadosEnVisita,
+  getAreasGeograficas,
+  getElementosColocados
 } = require('../../controller/survey/survey');
 
 const multer = require('multer');
@@ -66,5 +68,7 @@ router.get('/tipos-encuesta', getTiposEncuesta);
 router.get('/tamanos-local', getTamanosLocal);
 router.get('/tipos-negocio', getTiposNegocio);
 router.get('/elementos-colocados-en-visita', getElementosColocadosEnVisita);
+router.get('/areas-geograficas', getAreasGeograficas);
+router.get('/elementos-colocados', getElementosColocados);
 
 module.exports = router;

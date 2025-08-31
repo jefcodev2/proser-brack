@@ -19,6 +19,8 @@ const getSurveyTelefonica = async (req, res) => {
     const tamano_local = req.query.tamano_local || null;
     const tipo_negocio = req.query.tipo_negocio || null;
     const elementos_colocados_en_visita = req.query.elementos_colocados_en_visita || null;
+    const area_geografica = req.query.area_geografica || null;
+    const elemento_colocado = req.query.elemento_colocado || null;
 
     // Construir la consulta base
     let querySurvey = `SELECT * FROM survey_telefonica`;
@@ -75,6 +77,35 @@ const getSurveyTelefonica = async (req, res) => {
       }
     }
     
+    if (area_geografica) {
+      whereConditions.push(`area_geografica ILIKE $${whereParams.length + 1}`);
+      whereParams.push(`%${area_geografica}%`);
+    }
+    
+    if (elemento_colocado) {
+      // Convertir a array si es una cadena JSON
+      let elementosArray;
+      try {
+        elementosArray = Array.isArray(elemento_colocado) 
+          ? elemento_colocado 
+          : JSON.parse(elemento_colocado);
+      } catch (error) {
+        // Si no es JSON válido, tratarlo como una cadena simple
+        elementosArray = [elemento_colocado];
+      }
+      
+      // Crear condiciones para cada elemento en el array (lógica AND)
+      const elementoColocadoConditions = elementosArray.map((elemento, index) => {
+        whereParams.push(`%${elemento}%`);
+        return `elemento_colocado::text ILIKE $${whereParams.length}`;
+      });
+      
+      if (elementoColocadoConditions.length > 0) {
+        // Lógica AND para que se cumplan TODOS los elementos
+        whereConditions.push(`(${elementoColocadoConditions.join(' AND ')})`);
+      }
+    }
+    
     // Construir cláusula WHERE si hay filtros
     if (whereConditions.length > 0) {
       const whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
@@ -107,7 +138,9 @@ const getSurveyTelefonica = async (req, res) => {
         tipo_encuesta: tipo_encuesta || 'Todos',
         tamano_local: tamano_local || 'Todos',
         tipo_negocio: tipo_negocio || 'Todos',
-        elementos_colocados_en_visita: elementos_colocados_en_visita || 'Todos'
+        elementos_colocados_en_visita: elementos_colocados_en_visita || 'Todos',
+        area_geografica: area_geografica || 'Todas',
+        elemento_colocado: elemento_colocado || 'Todos'
       }
     });
   } catch (error) {
@@ -399,6 +432,69 @@ const getElementosColocadosEnVisita = async (req, res) => {
     res.status(500).json({
       ok: false,
       msg: "Error al obtener los elementos colocados en visita",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obtiene la lista de áreas geográficas disponibles
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getAreasGeograficas = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT area_geografica 
+      FROM survey_telefonica 
+      WHERE area_geografica IS NOT NULL AND area_geografica != ''
+      ORDER BY area_geografica ASC
+    `;
+
+    const areasGeograficas = await db_postgres.query(query);
+
+    res.json({
+      ok: true,
+      areas_geograficas: areasGeograficas.map(a => a.area_geografica),
+      total: areasGeograficas.length
+    });
+  } catch (error) {
+    console.error('Error en getAreasGeograficas:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener las áreas geográficas",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obtiene la lista de elementos únicos colocados (elemento_colocado)
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getElementosColocados = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT unnest(elemento_colocado) as elemento
+      FROM survey_telefonica 
+      WHERE elemento_colocado IS NOT NULL 
+        AND array_length(elemento_colocado, 1) > 0
+      ORDER BY elemento ASC
+    `;
+
+    const elementos = await db_postgres.query(query);
+
+    res.json({
+      ok: true,
+      elementos_colocados: elementos.map(e => e.elemento),
+      total: elementos.length
+    });
+  } catch (error) {
+    console.error('Error en getElementosColocados:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener los elementos colocados",
       error: error.message
     });
   }
@@ -748,6 +844,8 @@ module.exports = {
   getTiposEncuesta,
   getTamanosLocal,
   getTiposNegocio,
-  getElementosColocadosEnVisita
+  getElementosColocadosEnVisita,
+  getAreasGeograficas,
+  getElementosColocados
 };
 
