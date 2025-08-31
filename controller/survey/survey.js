@@ -154,11 +154,6 @@ const getSurveyTelefonica = async (req, res) => {
 };
 
 
-
-
-
-
-
 const getSurveyTelefonicaById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -188,9 +183,6 @@ const getSurveyTelefonicaById = async (req, res) => {
     });
   }
 };
-
-
-
 
 
 /**
@@ -599,6 +591,34 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
         const fila = data[i];
         
         try {
+          // Función para procesar fecha del Excel
+          const procesarFecha = (fechaExcel) => {
+            if (!fechaExcel) return null;
+            
+            try {
+              // Si es un número (fecha de Excel)
+              if (typeof fechaExcel === 'number') {
+                // Excel almacena fechas como días desde 1900-01-01
+                const fechaBase = new Date(1900, 0, 1);
+                const fecha = new Date(fechaBase.getTime() + (fechaExcel - 1) * 24 * 60 * 60 * 1000);
+                return fecha.toISOString();
+              }
+              
+              // Si es string, intentar parsearlo
+              if (typeof fechaExcel === 'string') {
+                const fecha = new Date(fechaExcel);
+                if (!isNaN(fecha.getTime())) {
+                  return fecha.toISOString();
+                }
+              }
+              
+              return null;
+            } catch (error) {
+              console.log('Error procesando fecha:', error);
+              return null;
+            }
+          };
+
           // Mapear columnas del Excel a campos de la BD
           const respondente = {
             codigo: fila.codigo || fila.CODIGO || `EST${String(i + 1).padStart(3, '0')}`,
@@ -615,7 +635,8 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
             longitud: String(fila.longitud || fila.LONGITUD || ''),
             provincia: fila.provincia || fila.PROVINCIA || '',
             canton: fila.canton || fila.CANTON || '',
-            parroquia: fila.parroquia || fila.PARROQUIA || ''
+            parroquia: fila.parroquia || fila.PARROQUIA || '',
+            fecha: procesarFecha(fila.fecha || fila.FECHA)
           };
 
           // Insertar o actualizar respondente
@@ -644,6 +665,7 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
                 province = $13,
                 canton = $14,
                 parish = $15,
+                created_at = COALESCE($16::timestamp, created_at),
                 updated_at = NOW()
               WHERE code = $1
               RETURNING id`,
@@ -653,7 +675,7 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
                 respondente.calle_principal, respondente.calle_secundaria,
                 respondente.nomenclatura, respondente.area_geografica,
                 respondente.latitud, respondente.longitud, respondente.provincia,
-                respondente.canton, respondente.parroquia
+                respondente.canton, respondente.parroquia, respondente.fecha
               ]
             );
           } else {
@@ -662,8 +684,8 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
               `INSERT INTO sur_respondent (
                 code, name, business_type, survey_type, business_size, business_group,
                 main_street, secondary_street, nomenclature, geo_area,
-                latitud, longitud, province, canton, parish
-              ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+                latitud, longitud, province, canton, parish, created_at
+              ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
               RETURNING id`,
               [
                 respondente.codigo, respondente.nombre, respondente.tipo_negocio,
@@ -671,7 +693,8 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
                 respondente.calle_principal, respondente.calle_secundaria,
                 respondente.nomenclatura, respondente.area_geografica,
                 respondente.latitud, respondente.longitud, respondente.provincia,
-                respondente.canton, respondente.parroquia
+                respondente.canton, respondente.parroquia, 
+                respondente.fecha || new Date().toISOString()
               ]
             );
           }
