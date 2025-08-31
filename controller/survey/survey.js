@@ -13,7 +13,7 @@ const fs = require('fs');
 const getSurveyTelefonica = async (req, res) => {
   try {
     const desde = Number(req.query.desde) || 0;
-    const limit = Number(req.query.limit) || 10;
+    const limit = Number(req.query.limit) || 35;
     const provincia = req.query.provincia || null;
     const tipo_encuesta = req.query.tipo_encuesta || null;
     const tamano_local = req.query.tamano_local || null;
@@ -600,6 +600,35 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
             return valorLimpio;
           };
 
+          // Función para procesar campos que pueden ser arrays o strings separados por comas
+          const procesarCampoArray = (valor) => {
+            if (valor === undefined || valor === null || valor === '') return null;
+            
+            // Limpiar caracteres especiales
+            let valorLimpio = String(valor)
+              .replace(/["'\t\n\r]/g, '')
+              .trim();
+            
+            if (valorLimpio === '') return null;
+            
+            // Si ya es un JSON array válido, parsearlo
+            if (valorLimpio.startsWith('[') && valorLimpio.endsWith(']')) {
+              try {
+                return JSON.parse(valorLimpio);
+              } catch (error) {
+                console.log('Error parseando JSON array:', error);
+              }
+            }
+            
+            // Si contiene comas, dividir en array
+            if (valorLimpio.includes(',')) {
+              return valorLimpio.split(',').map(item => item.trim()).filter(item => item !== '');
+            }
+            
+            // Si es un valor único, devolverlo como array de un elemento
+            return [valorLimpio];
+          };
+
           // Preparar respuestas basadas en las columnas del Excel
           const respuestas = [
             { display_order: 1, respuesta: fila.vende_chips || fila.VENDE_CHIPS },
@@ -618,9 +647,9 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
             { display_order: 14, respuesta: limpiarValorNumerico(fila.stock_actual_tuenti || fila.STOCK_ACTUAL_TUENTI) },
             { display_order: 15, respuesta: fila.vende_recargas || fila.VENDE_RECARGAS },
             { display_order: 16, respuesta: fila.de_que_operadora_vende_recargas || fila.DE_QUE_OPERADORA_VENDE_RECARGAS },
-            { display_order: 17, respuesta: fila.elementos_actualmente_en_tienda || fila.ELEMENTOS_ACTUALMENTE_EN_TIENDA },
-            { display_order: 18, respuesta: fila.elementos_colocados_en_visita || fila.ELEMENTOS_COLOCADOS_EN_VISITA },
-            { display_order: 19, respuesta: fila.elemento_colocado || fila.ELEMENTO_COLOCADO },
+            { display_order: 17, respuesta: procesarCampoArray(fila.elementos_actualmente_en_tienda || fila.ELEMENTOS_ACTUALMENTE_EN_TIENDA) },
+            { display_order: 18, respuesta: procesarCampoArray(fila.elementos_colocados_en_visita || fila.ELEMENTOS_COLOCADOS_EN_VISITA) },
+            { display_order: 19, respuesta: procesarCampoArray(fila.elemento_colocado || fila.ELEMENTO_COLOCADO) },
             { display_order: 20, respuesta: fila.imagen_antes || fila.IMAGEN_ANTES },
             { display_order: 21, respuesta: fila.imagen_despues || fila.IMAGEN_DESPUES }
           ];
