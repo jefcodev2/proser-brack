@@ -15,7 +15,8 @@ const {
   getTiposNegocio,
   getElementosColocadosEnVisita,
   getAreasGeograficas,
-  getElementosColocados
+  getElementosColocados,
+  getMesesDisponibles
 } = require('../../controller/survey/survey');
 
 const multer = require('multer');
@@ -70,5 +71,6 @@ router.get('/tipos-negocio', getTiposNegocio);
 router.get('/elementos-colocados-en-visita', getElementosColocadosEnVisita);
 router.get('/areas-geograficas', getAreasGeograficas);
 router.get('/elementos-colocados', getElementosColocados);
+router.get('/meses-disponibles', getMesesDisponibles);
 
 module.exports = router;

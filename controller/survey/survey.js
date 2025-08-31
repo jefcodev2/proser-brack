@@ -21,6 +21,7 @@ const getSurveyTelefonica = async (req, res) => {
     const elementos_colocados_en_visita = req.query.elementos_colocados_en_visita || null;
     const area_geografica = req.query.area_geografica || null;
     const elemento_colocado = req.query.elemento_colocado || null;
+    const mes = req.query.mes || null;
 
     // Construir la consulta base
     let querySurvey = `SELECT * FROM survey_telefonica`;
@@ -106,6 +107,41 @@ const getSurveyTelefonica = async (req, res) => {
       }
     }
     
+    if (mes) {
+      // Filtrar por mes del created_at
+      // Acepta formato "YYYY-MM", nombre del mes en español, o número
+      
+      // Mapeo de nombres de meses en español a números
+      const mesesEspanol = {
+        'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4,
+        'mayo': 5, 'junio': 6, 'julio': 7, 'agosto': 8,
+        'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+      };
+      
+      if (mes.includes('-')) {
+        // Formato "YYYY-MM" (año y mes específicos)
+        whereConditions.push(`TO_CHAR(fecha, 'YYYY-MM') = $${whereParams.length + 1}`);
+        whereParams.push(mes);
+      } else {
+        let mesNumero;
+        
+        // Verificar si es un nombre de mes en español
+        const mesNormalizado = mes.toLowerCase().trim();
+        if (mesesEspanol[mesNormalizado]) {
+          mesNumero = mesesEspanol[mesNormalizado];
+        } else {
+          // Intentar convertir a número
+          mesNumero = parseInt(mes);
+        }
+        
+        // Validar que el número de mes esté en rango válido
+        if (mesNumero >= 1 && mesNumero <= 12) {
+          whereConditions.push(`EXTRACT(MONTH FROM fecha) = $${whereParams.length + 1}`);
+          whereParams.push(mesNumero);
+        }
+      }
+    }
+    
     // Construir cláusula WHERE si hay filtros
     if (whereConditions.length > 0) {
       const whereClause = ` WHERE ${whereConditions.join(' AND ')}`;
@@ -140,7 +176,8 @@ const getSurveyTelefonica = async (req, res) => {
         tipo_negocio: tipo_negocio || 'Todos',
         elementos_colocados_en_visita: elementos_colocados_en_visita || 'Todos',
         area_geografica: area_geografica || 'Todas',
-        elemento_colocado: elemento_colocado || 'Todos'
+        elemento_colocado: elemento_colocado || 'Todos',
+        mes: mes || 'Todos'
       }
     });
   } catch (error) {
@@ -487,6 +524,64 @@ const getElementosColocados = async (req, res) => {
     res.status(500).json({
       ok: false,
       msg: "Error al obtener los elementos colocados",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Obtiene la lista de meses disponibles basados en created_at
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getMesesDisponibles = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT 
+        TO_CHAR(fecha, 'YYYY-MM') as mes_anio,
+        EXTRACT(YEAR FROM fecha) as anio,
+        EXTRACT(MONTH FROM fecha) as mes,
+        TO_CHAR(fecha, 'Month') as nombre_mes
+      FROM survey_telefonica 
+      WHERE fecha IS NOT NULL
+      ORDER BY mes_anio DESC
+    `;
+
+    const meses = await db_postgres.query(query);
+
+    // Crear array con información completa de meses
+    const mesesFormateados = meses.map(m => ({
+      valor: m.mes_anio,
+      anio: parseInt(m.anio),
+      mes: parseInt(m.mes),
+      nombre_mes: m.nombre_mes.trim(),
+      etiqueta: `${m.nombre_mes.trim()} ${m.anio}`
+    }));
+
+    // También crear lista de solo números de mes (1-12) únicos
+    const mesesUnicos = [...new Set(meses.map(m => parseInt(m.mes)))].sort((a, b) => a - b);
+    
+    const nombresMeses = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    const mesesSoloNumero = mesesUnicos.map(num => ({
+      valor: num,
+      nombre: nombresMeses[num - 1]
+    }));
+
+    res.json({
+      ok: true,
+      meses_con_anio: mesesFormateados,
+      meses_solo_numero: mesesSoloNumero,
+      total: meses.length
+    });
+  } catch (error) {
+    console.error('Error en getMesesDisponibles:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener los meses disponibles",
       error: error.message
     });
   }
@@ -869,6 +964,7 @@ module.exports = {
   getTiposNegocio,
   getElementosColocadosEnVisita,
   getAreasGeograficas,
-  getElementosColocados
+  getElementosColocados,
+  getMesesDisponibles
 };
 
