@@ -846,7 +846,7 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
           // Preparar respuestas basadas en las columnas del Excel
           const respuestas = [
             { display_order: 1, respuesta: fila.vende_chips || fila.VENDE_CHIPS },
-            { display_order: 2, respuesta: fila.de_que_operadora_vende_chips || fila.DE_QUE_OPERADORA_VENDE_CHIPS },
+            { display_order: 2, respuesta:  procesarCampoArray(fila.de_que_operadora_vende_chips || fila.DE_QUE_OPERADORA_VENDE_CHIPS) },
             { display_order: 3, respuesta: limpiarValorNumerico(fila.valor_compra_simcard_movistar || fila.VALOR_COMPRA_SIMCARD_MOVISTAR) },
             { display_order: 4, respuesta: limpiarValorNumerico(fila.valor_venta_simcard_movistar || fila.VALOR_VENTA_SIMCARD_MOVISTAR) },
             { display_order: 5, respuesta: limpiarValorNumerico(fila.valor_compra_simcard_tuenti || fila.VALOR_COMPRA_SIMCARD_TUENTI) },
@@ -860,7 +860,7 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
             { display_order: 13, respuesta: limpiarValorNumerico(fila.stock_actual_movistar || fila.STOCK_ACTUAL_MOVISTAR) },
             { display_order: 14, respuesta: limpiarValorNumerico(fila.stock_actual_tuenti || fila.STOCK_ACTUAL_TUENTI) },
             { display_order: 15, respuesta: fila.vende_recargas || fila.VENDE_RECARGAS },
-            { display_order: 16, respuesta: fila.de_que_operadora_vende_recargas || fila.DE_QUE_OPERADORA_VENDE_RECARGAS },
+            { display_order: 16, respuesta: procesarCampoArray(fila.de_que_operadora_vende_recargas || fila.DE_QUE_OPERADORA_VENDE_RECARGAS)  },
             { display_order: 17, respuesta: procesarCampoArray(fila.elementos_actualmente_en_tienda || fila.ELEMENTOS_ACTUALMENTE_EN_TIENDA) },
             { display_order: 18, respuesta: procesarCampoArray(fila.elementos_colocados_en_visita || fila.ELEMENTOS_COLOCADOS_EN_VISITA) },
             { display_order: 19, respuesta: procesarCampoArray(fila.elemento_colocado || fila.ELEMENTO_COLOCADO) },
