@@ -1,33 +1,27 @@
-require('dotenv').config()
+require('dotenv').config();
 
-const express = require('express')
-const cors = require('cors')
+const express = require('express');
+const cors = require('cors');
 
-// Crear servidor express
 const app = express();
 
-// Configuración cors
+// middlewares
 app.use(cors());
-
-// Lectura y parseo del body
 app.use(express.json());
 
-// Manejo de errores
-app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error en el servidor.' });
-});
-
-// Core
+// rutas
 app.use('/api/v1/login/', require('./routes/auth'));
-    
-// users
 app.use('/api/v1/usuarios', require('./routes/seguridad/usuarios'));
-
-// survey
 app.use('/api/v1/survey', require('./routes/survey/survey'));
 
+// manejador de errores (al final)
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Ocurrió un error en el servidor.' });
+});
 
-app.listen(process.env.PORT, () => {
-    console.log('Servidor corriendo en puerto ' + process.env.PORT)
-})
+// escucha local / contenedor; en Vercel no necesitas definir PORT
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log('Servidor corriendo en puerto ' + port);
+});
