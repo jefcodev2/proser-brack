@@ -13,7 +13,7 @@ const fs = require('fs');
 const getSurveyTelefonica = async (req, res) => {
   try {
     const desde = Number(req.query.desde) || 0;
-    const limit = Number(req.query.limit) || 35;
+    const limit = Number(req.query.limit) || 10;
     const provincia = req.query.provincia || null;
     const tipo_encuesta = req.query.tipo_encuesta || null;
     const tamano_local = req.query.tamano_local || null;
@@ -306,6 +306,32 @@ const uploadSurveyTelefonica = async (req, res) => {
       ok: false,
       msg: "Error al subir encuestas telefónicas",
       error: error.message,
+    });
+  }
+};
+
+/**
+ * Obtiene todas las encuestas telefónicas sin filtros ni paginación
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+const getAllSurveyTelefonica = async (req, res) => {
+  try {
+    const query = `SELECT * FROM survey_telefonica`;
+
+    const encuestas = await db_postgres.query(query);
+
+    res.json({
+      ok: true,
+      encuestas,
+      total: encuestas.length
+    });
+  } catch (error) {
+    console.error('Error en getAllSurveyTelefonica:', error);
+    res.status(500).json({
+      ok: false,
+      msg: "Error al obtener todas las encuestas telefónicas",
+      error: error.message
     });
   }
 };
@@ -622,26 +648,7 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
         });
       }
 
-      // Verificar y crear restricción única si no existe
-      try {
-        await db_postgres.none(`
-          DO $$
-          BEGIN
-              IF NOT EXISTS (
-                  SELECT 1 
-                  FROM information_schema.table_constraints 
-                  WHERE constraint_name = 'sur_respondent_code_unique' 
-                  AND table_name = 'sur_respondent'
-              ) THEN
-                  ALTER TABLE sur_respondent 
-                  ADD CONSTRAINT sur_respondent_code_unique UNIQUE (code);
-              END IF;
-          END
-          $$;
-        `);
-      } catch (constraintError) {
-        console.log('Info: No se pudo agregar restricción única (puede que ya exista):', constraintError.message);
-      }
+      // Nota: Se permite códigos duplicados en sur_respondent
 
       // Obtener IDs necesarios de la base de datos
       const usuario = await db_postgres.oneOrNone(
@@ -734,65 +741,24 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
             fecha: procesarFecha(fila.fecha || fila.FECHA)
           };
 
-          // Insertar o actualizar respondente
-          // Primero verificar si ya existe
-          const existingRespondent = await db_postgres.oneOrNone(
-            "SELECT id FROM sur_respondent WHERE code = $1",
-            [respondente.codigo]
+          // Insertar nuevo respondente (se permiten códigos duplicados)
+          const respondentResult = await db_postgres.one(
+            `INSERT INTO sur_respondent (
+              code, name, business_type, survey_type, business_size, business_group,
+              main_street, secondary_street, nomenclature, geo_area,
+              latitud, longitud, province, canton, parish, created_at
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+            RETURNING id`,
+            [
+              respondente.codigo, respondente.nombre, respondente.tipo_negocio,
+              respondente.tipo_encuesta, respondente.tamano_local, respondente.grupo_negocio,
+              respondente.calle_principal, respondente.calle_secundaria,
+              respondente.nomenclatura, respondente.area_geografica,
+              respondente.latitud, respondente.longitud, respondente.provincia,
+              respondente.canton, respondente.parroquia, 
+              respondente.fecha || new Date().toISOString()
+            ]
           );
-
-          let respondentResult;
-          if (existingRespondent) {
-            // Actualizar registro existente
-            respondentResult = await db_postgres.one(
-              `UPDATE sur_respondent SET 
-                name = $2,
-                business_type = $3,
-                survey_type = $4,
-                business_size = $5,
-                business_group = $6,
-                main_street = $7,
-                secondary_street = $8,
-                nomenclature = $9,
-                geo_area = $10,
-                latitud = $11,
-                longitud = $12,
-                province = $13,
-                canton = $14,
-                parish = $15,
-                created_at = COALESCE($16::timestamp, created_at),
-                updated_at = NOW()
-              WHERE code = $1
-              RETURNING id`,
-              [
-                respondente.codigo, respondente.nombre, respondente.tipo_negocio,
-                respondente.tipo_encuesta, respondente.tamano_local, respondente.grupo_negocio,
-                respondente.calle_principal, respondente.calle_secundaria,
-                respondente.nomenclatura, respondente.area_geografica,
-                respondente.latitud, respondente.longitud, respondente.provincia,
-                respondente.canton, respondente.parroquia, respondente.fecha
-              ]
-            );
-          } else {
-            // Insertar nuevo registro
-            respondentResult = await db_postgres.one(
-              `INSERT INTO sur_respondent (
-                code, name, business_type, survey_type, business_size, business_group,
-                main_street, secondary_street, nomenclature, geo_area,
-                latitud, longitud, province, canton, parish, created_at
-              ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-              RETURNING id`,
-              [
-                respondente.codigo, respondente.nombre, respondente.tipo_negocio,
-                respondente.tipo_encuesta, respondente.tamano_local, respondente.grupo_negocio,
-                respondente.calle_principal, respondente.calle_secundaria,
-                respondente.nomenclatura, respondente.area_geografica,
-                respondente.latitud, respondente.longitud, respondente.provincia,
-                respondente.canton, respondente.parroquia, 
-                respondente.fecha || new Date().toISOString()
-              ]
-            );
-          }
 
           resultados.respondentes_insertados++;
 
@@ -955,6 +921,7 @@ const uploadMasiveSurveyFromExcel = async (req, res) => {
 
 module.exports = {
   getSurveyTelefonica,
+  getAllSurveyTelefonica,
   getSurveyTelefonicaById,
   uploadSurveyTelefonica,
   uploadMasiveSurveyFromExcel,

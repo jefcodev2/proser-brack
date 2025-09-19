@@ -6,7 +6,8 @@ const { validarJWT } = require('../../middlewares/validar-jwt');
 const { validarPermisos } = require('../../middlewares/validar-permisos');
 
 const { 
-  getSurveyTelefonica, 
+  getSurveyTelefonica,
+  getAllSurveyTelefonica, 
   getSurveyTelefonicaById,
   uploadMasiveSurveyFromExcel,
   getProvincias,
@@ -56,6 +57,9 @@ const router = Router();
 
 // Obtener lista de encuestas telefónicas con paginación
 router.get('/telefonica', getSurveyTelefonica);
+
+// Obtener todas las encuestas telefónicas sin filtros ni paginación
+router.get('/telefonica/all', getAllSurveyTelefonica);
 
 // Obtener encuesta telefónica por ID
 router.get('/telefonica/:id', getSurveyTelefonicaById);
